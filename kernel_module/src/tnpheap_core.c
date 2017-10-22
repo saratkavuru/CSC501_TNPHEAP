@@ -43,7 +43,14 @@
 #include <linux/poll.h>
 #include <linux/mutex.h>
 #include <linux/time.h>
+static __u64 transaction_number =0;
+struct list_tnpheap{
+    __u64 version_number;
+    __u64 offset;
+    list_tnpheap *next;
 
+}
+struct list_tnpheap *trans_head=NULL;
 struct miscdevice tnpheap_dev;
 
 __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
@@ -51,9 +58,15 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
     struct tnpheap_cmd cmd;
     if (copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
-        return -1 ;
+        struct list_tnpheap *temp = trans_head;
+        while(temp!=NULL)
+        {
+            if(temp->offest == (user_cmd->offset/PAGE_SIZE))
+                return temp->version_number;
+            temp=temp->next;
+        } 
     }    
-    return 0;
+    return -1;
 }
 
 __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
@@ -62,9 +75,27 @@ __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
     __u64 ret=0;
     if (copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
-        return -1 ;
+        struct list_tnpheap *temp = trans_head;
+        while(temp!=NULL)
+        {
+            if(temp->offest == (user_cmd->offset/PAGE_SIZE))
+                return ++transaction_number;
+            temp=temp->next;
+        } 
+        *temp = trans_head;
+        struct list_tnpheap *new_node=kmalloc(sizeof(struct list_tnpheap),GFP_KERNEL);
+        new_node->offset = (user_cmd->offset/PAGE_SIZE);
+        new_node->version_number = 0;
+        if(temp==NULL)
+            temp=new_node;
+        else
+        {
+            while(temp->next!=NULL)
+                temp=temp->next;
+            temp->next=new_node;
+        }
     }    
-    return ret;
+    return ++transaction_number;
 }
 
 __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
@@ -73,6 +104,16 @@ __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
     __u64 ret=0;
     if (copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
+        struct list_tnpheap *temp = trans_head;
+        while(temp!=NULL)
+        {
+            if(temp->offset == (user_cmd->offset/PAGE_SIZE))
+            {
+                if(temp->version_number==)
+            }
+                return temp->version_number;
+            temp=temp->next;
+        } 
         return -1 ;
     }
     return ret;

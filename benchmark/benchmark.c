@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
             sprintf(data_array[object_id].data,"%s%d",data_array[object_id].data,a);
         }
     }
-
+//Try to atomically copy data to mapped_data in npheap
     START_TX(npheap_dev, tnpheap_dev);
     for(i = 0; i < number_of_objects*2; i++)
     {
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         }
     }
     COMMIT(npheap_dev, tnpheap_dev);
-    // print commit log
+    // print commit log into the tnpheap.pid.log(data from the npheap)
     pid=(int)getpid();
     sprintf(filename,"tnpheap.%d.log",pid);
     fp = fopen(filename,"w");
