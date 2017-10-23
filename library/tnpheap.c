@@ -18,9 +18,9 @@ struct list_tnpheap_TM {
     __u64 transaction_number;
     __u64 size;
     void *local_buffer;
-    list_tnpheap_TM *next;
+    struct list_tnpheap_TM *next;
 
-}
+};
 struct list_tnpheap_TM *head=NULL;
 __u64 tnpheap_get_version(int npheap_dev, int tnpheap_dev, __u64 offset)
 {

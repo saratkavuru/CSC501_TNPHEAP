@@ -49,9 +49,9 @@ struct list_tnpheap {
 
     __u64 version_number;
     __u64 offset;
-    list_tnpheap *next;
+    struct list_tnpheap *next;
 
-}
+};
 struct list_tnpheap *trans_head=NULL;
 struct miscdevice tnpheap_dev;
 
@@ -96,13 +96,13 @@ __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
 __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
 {
     struct file *filp;
-    struct tnpheap_cmd cmd;
+    struct tnpheap_cmd *cmd;
     __u64 ret=0;
     if (!copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
-        struct vm_area_struct *vma =kmalloc(sizeof(vm_area_struct),GFP_KERNEL);
-        vma->offset = cmd->offset;
-        if(!copy_from_user(npheap_mmap(*filp,*vma)),cmd->data,cmd->size){
+        struct vm_area_struct *vma =kmalloc(sizeof(struct vm_area_struct),GFP_KERNEL);
+        vma->vm_pgoff = cmd->offset;
+        if(!copy_from_user(npheap_mmap(filp,vma),cmd->data,cmd->size)){
             
         struct list_tnpheap *temp = trans_head;
         while(temp!=NULL)
