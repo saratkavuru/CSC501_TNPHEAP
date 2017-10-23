@@ -58,13 +58,13 @@ struct miscdevice tnpheap_dev;
 __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
 {
     struct tnpheap_cmd cmd;
-    if (copy_from_user(&cmd, user_cmd, sizeof(cmd)))
+    if (!copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
         struct list_tnpheap *temp = trans_head;
         while(temp!=NULL)
         {
             // if found, return the version number.
-            if(temp->offest == (user_cmd->offset/PAGE_SIZE))
+            if(temp->offset == (user_cmd->offset/PAGE_SIZE))
                 return temp->version_number;
              temp=temp->next;
         }
@@ -95,13 +95,28 @@ __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
 
 __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
 {
+    struct file *filp;
     struct tnpheap_cmd cmd;
     __u64 ret=0;
-    if (copy_from_user(&cmd, user_cmd, sizeof(cmd)))
+    if (!copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
-        struct vm_area_struct *vma ;
+        struct vm_area_struct *vma =kmalloc(sizeof(vm_area_struct),GFP_KERNEL);
         vma->offset = cmd->offset;
-        npheap_alloc
+        if(!copy_from_user(npheap_mmap(*filp,*vma)),cmd->data,cmd->size){
+            
+        struct list_tnpheap *temp = trans_head;
+        while(temp!=NULL)
+        {
+            // if found, update the version number.
+            if(temp->offset == (user_cmd->offset/PAGE_SIZE)){
+                temp->version_number = temp->version_number + 1;
+                return 1;
+            }
+                 
+             temp=temp->next;
+        }
+
+        }
     }
     return ret;
 }

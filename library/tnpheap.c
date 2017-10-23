@@ -16,6 +16,7 @@ struct list_tnpheap_TM {
     __u64 version_number;
     __u64 offset;
     __u64 transaction_number;
+    __u64 size;
     void *local_buffer;
     list_tnpheap_TM *next;
 
@@ -57,13 +58,15 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     	new_node->version_number = -1;	
     	new_node->transaction_number = -1;
     	new_node->offset = -1;
+    	new->node->size = 0;
     	new_node->local_buffer = NULL;
     	new_node->next =NULL;
     	//populate the list
     	new_node->transaction_number = current_tx;
     	new_node->offset = offset;
     	new_node->version_number = tnpheap_ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd);
-    	new_node->local_buffer = malloc(size);
+    	new_node->size = size;
+     	new_node->local_buffer = malloc(size);
     	struct list_tnpheap_TM *temp = head;
     	if(temp==NULL){
     		temp = new_node;
@@ -99,6 +102,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
             	cmd->version_number = temp->version_number;
             	cmd->offset = temp->offset;
             	cmd->data = temp->local_buffer;
+            	cmd->size = temp->size;
             	if( temp->version_number == tnpheap_ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd))
                 	if(tnpheap_ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd))
                 		return 0;
