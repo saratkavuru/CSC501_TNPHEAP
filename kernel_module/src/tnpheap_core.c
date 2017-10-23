@@ -43,8 +43,10 @@
 #include <linux/poll.h>
 #include <linux/mutex.h>
 #include <linux/time.h>
+
 static __u64 transaction_number =0;
-struct list_tnpheap{
+struct list_tnpheap {
+
     __u64 version_number;
     __u64 offset;
     list_tnpheap *next;
@@ -61,28 +63,14 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
         struct list_tnpheap *temp = trans_head;
         while(temp!=NULL)
         {
+            // if found, return the version number.
             if(temp->offest == (user_cmd->offset/PAGE_SIZE))
                 return temp->version_number;
-            temp=temp->next;
-        } 
-    }    
-    return -1;
-}
+             temp=temp->next;
+        }
 
-__u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
-{
-    struct tnpheap_cmd cmd;
-    __u64 ret=0;
-    if (copy_from_user(&cmd, user_cmd, sizeof(cmd)))
-    {
-        struct list_tnpheap *temp = trans_head;
-        while(temp!=NULL)
-        {
-            if(temp->offest == (user_cmd->offset/PAGE_SIZE))
-                return ++transaction_number;
-            temp=temp->next;
-        } 
-        *temp = trans_head;
+        //if not found, create a new list entry with version number 0
+        temp = trans_head;
         struct list_tnpheap *new_node=kmalloc(sizeof(struct list_tnpheap),GFP_KERNEL);
         new_node->offset = (user_cmd->offset/PAGE_SIZE);
         new_node->version_number = 0;
@@ -93,8 +81,15 @@ __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
             while(temp->next!=NULL)
                 temp=temp->next;
             temp->next=new_node;
-        }
+        } 
     }    
+    return -1;
+}
+
+
+__u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
+{
+  
     return ++transaction_number;
 }
 
@@ -104,17 +99,9 @@ __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
     __u64 ret=0;
     if (copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
-        struct list_tnpheap *temp = trans_head;
-        while(temp!=NULL)
-        {
-            if(temp->offset == (user_cmd->offset/PAGE_SIZE))
-            {
-                if(temp->version_number==)
-            }
-                return temp->version_number;
-            temp=temp->next;
-        } 
-        return -1 ;
+        struct vm_area_struct *vma ;
+        vma->offset = cmd->offset;
+        npheap_alloc
     }
     return ret;
 }
