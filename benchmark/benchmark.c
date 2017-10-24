@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
     tnpheap_init();
     npheap_dev = open("/dev/npheap",O_RDWR);
     tnpheap_dev = open("/dev/tnpheap",O_RDWR);
+    fprintf(stderr, "Both devices opened\n");
     if(tnpheap_dev < 0 || npheap_dev < 0)
     {
         fprintf(stderr, "Device open failed");
@@ -85,6 +86,7 @@ int main(int argc, char *argv[])
         if(data_array[i].size)
         {
             size = data_array[i].size;
+            fprintf(stderr, "About to allocate in benchmark for Object %d\n",i);
             mapped_data = (char *)tnpheap_alloc(npheap_dev,tnpheap_dev,i,size);
             if(!mapped_data)
             {
@@ -92,7 +94,9 @@ int main(int argc, char *argv[])
                 exit(1);
             }
             memset(mapped_data, 0, data_array[i].size);
+            fprintf(stderr, "Intialize buffer to 0\n");
             memcpy(mapped_data, data_array[i].data, data_array[i].size);
+            fprintf(stderr, "Copy data to buffer\n");
         }
     }
     COMMIT(npheap_dev, tnpheap_dev);

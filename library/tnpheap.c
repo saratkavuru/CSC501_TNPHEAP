@@ -11,6 +11,8 @@
 #include <malloc.h>
 #include <string.h>
 
+__u64 current_tx;
+
 struct list_tnpheap_TM {
 	
     __u64 version_number;
@@ -25,11 +27,11 @@ struct list_tnpheap_TM *head=NULL;
 __u64 tnpheap_get_version(int npheap_dev, int tnpheap_dev, __u64 offset)
 {
       // Search this list_npheap_TM using offset as index
-	struct list_tnpheap_TM *temp = TM_head;
+	struct list_tnpheap_TM *temp = head;
         while(temp!=NULL)
         {
             // if found, return the version number.
-            if(temp->offest == offset)
+            if(temp->offset == offset)
                 return temp->version_number;
              temp=temp->next;
         }
@@ -47,26 +49,30 @@ int tnpheap_handler(int sig, siginfo_t *si)
 
 void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 {
-    
+    fprintf(stderr, "Just entered tnpheap_alloc-%d\n",getpid());
     if(npheap_alloc(npheap_dev,offset,size))
     { 
+    	fprintf(stderr, "Allocated npheap offset-%d\n",getpid());
     	struct tnpheap_cmd cmd;
-    	cmd->offset = offset*getpagesize();
+    	cmd.offset = offset*getpagesize();
+    	fprintf(stderr, "Allocated command offset-%d\n",getpid());
     	//populate the transaction map on successful alloc
     	struct list_tnpheap_TM *new_node = malloc(sizeof(struct list_tnpheap_TM));
     	//initialise to negative values.
     	new_node->version_number = -1;	
     	new_node->transaction_number = -1;
     	new_node->offset = -1;
-    	new->node->size = 0;
+    	new_node->size = 0;
     	new_node->local_buffer = NULL;
     	new_node->next =NULL;
+    	fprintf(stderr, "Made a new node-%d\n",getpid());
     	//populate the list
     	new_node->transaction_number = current_tx;
     	new_node->offset = offset;
-    	new_node->version_number = tnpheap_ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd);
+    	new_node->version_number = ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd);
     	new_node->size = size;
      	new_node->local_buffer = malloc(size);
+     	fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
     	struct list_tnpheap_TM *temp = head;
     	if(temp==NULL){
     		temp = new_node;
@@ -78,6 +84,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     		temp->next=new_node;
     	}
 
+       fprintf(stderr, "Returning pointer of local_buffer for transaction-%lu in -%d\n",current_tx,getpid());
     	return new_node->local_buffer;     
     }
     return -1;
@@ -86,29 +93,37 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 __u64 tnpheap_start_tx(int npheap_dev, int tnpheap_dev)
 {
 	struct tnpheap_cmd cmd;
-    return tnpheap_ioctl(tnpheap_dev,TNPHEAP_IOCTL_START_TX,&cmd);
+	fprintf(stderr, "Started transaction%lu of -%d\n",current_tx,getpid());
+    return ioctl(tnpheap_dev,TNPHEAP_IOCTL_START_TX,&cmd);
 }
 
 int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 {
 	__u64 local_version_number = -1;
 	// Search this list_npheap_TM using transaction number as index
-	struct list_tnpheap_TM *temp = TM_head;
+	struct list_tnpheap_TM *temp = head;
+	fprintf(stderr, "Just inside commit\n");
         while(temp!=NULL)
         {
             // if found, return the version number.
             if(temp->transaction_number == current_tx){
+            	//struct tnpheap_cmd *cmd= malloc(sizeof(struct tnpheap_cmd));
+            	fprintf(stderr, "Trying to commit transaction-%lu in -%d\n",current_tx,getpid());
             	struct tnpheap_cmd cmd;
-            	cmd->version_number = temp->version_number;
-            	cmd->offset = temp->offset;
-            	cmd->data = temp->local_buffer;
-            	cmd->size = temp->size;
-            	if( temp->version_number == tnpheap_ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd))
-                	if(tnpheap_ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd))
-                		return 0;
+            	cmd.version = temp->version_number;
+            	cmd.offset = temp->offset;
+            	cmd.data = temp->local_buffer;
+            	cmd.size = temp->size;
+            	if( temp->version_number == ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd)){
+            	fprintf(stderr, "Proceed to commit transaction-%lu in -%d\n",current_tx,getpid());
+            	memcpy(npheap_alloc(npheap_dev,temp->offset,temp->size),temp->local_buffer,temp->size);
+            	if(ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd)){            		            	fprintf(stderr, "Trying to commit transaction-%lu in -%d\n",current_tx,getpid());
+                	fprintf(stderr, "Committed transaction-%lu in -%d\n",current_tx,getpid());
+
+                		return 0;}
+            	}
+         	
             }
-
-
                 
              temp=temp->next;
         }
