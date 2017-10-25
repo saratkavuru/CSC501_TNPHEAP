@@ -58,11 +58,11 @@ struct miscdevice tnpheap_dev;
 __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
 {
     struct tnpheap_cmd cmd;
-    printk(KERN_CONT "Inside get version-kernel\n");
+    //printk(KERN_CONT "Inside get version-kernel\n");
     if (!copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
         struct list_tnpheap *temp = trans_head;
-        printk(KERN_CONT "Inside get version-kernel copy from copy_from_user\n");
+      //  printk(KERN_CONT "Inside get version-kernel copy from copy_from_user\n");
         while(temp!=NULL)
         {
             // if found, return the version number.
@@ -77,14 +77,23 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
         struct list_tnpheap *new_node=kmalloc(sizeof(struct list_tnpheap),GFP_KERNEL);
         new_node->offset = (user_cmd->offset/PAGE_SIZE);
         new_node->version_number = 0;
-        printk(KERN_CONT "Creating a new_node in get version-kernel\n");
+        //printk(KERN_CONT "Offset- %lu , Version number- %lu\n",new_node->offset,new_node->version_number);
+        //printk(KERN_CONT "Creating a new_node in get version-kernel\n");
         if(temp==NULL)
-            temp=new_node;
+            {
+                trans_head=new_node;
+                printk(KERN_CONT "kernel head was NULL\n");
+                return new_node->version_number;
+            }
+
         else
         {
+            printk(KERN_CONT "Kernel head was not NULL\n");
             while(temp->next!=NULL)
                 temp=temp->next;
+
             temp->next=new_node;
+            return new_node->version_number;
         } 
     }    
     return -1;
@@ -93,19 +102,19 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
 
 __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
 {
-  printk(KERN_CONT "Inside start_tx-kernel\n");
+  //printk(KERN_CONT "Inside start_tx-kernel\n");
     return ++transaction_number;
 }
 
 __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
 {
     
-    printk(KERN_CONT "Inside commit-kernel\n");
+    //printk(KERN_CONT "Inside commit-kernel\n");
     struct tnpheap_cmd *cmd;
     __u64 ret=0;
     if (!copy_from_user(&cmd, user_cmd, sizeof(cmd)))
     {
-       printk(KERN_CONT "Inside copy_from_user of commit-kernel\n");
+      // printk(KERN_CONT "Inside copy_from_user of commit-kernel\n");
         //if(!copy_from_user(npheap_alloc(npdevfd,cmd->offset,cmd->size),cmd->data,cmd->size)){
         //  if (1) { 
       //__u64 aligned_size= ((cmd->size + getpagesize() - 1) / getpagesize())*getpagesize(); 
@@ -114,7 +123,7 @@ __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
 
         while(temp!=NULL)
         {
-            printk(KERN_CONT "Inside commit-searching for version-kernel\n");
+            //printk(KERN_CONT "Inside commit-searching for version-kernel\n");
             // if found, update the version number.
             if(temp->offset == (user_cmd->offset/PAGE_SIZE)){
                 temp->version_number = temp->version_number + 1;

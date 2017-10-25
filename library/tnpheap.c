@@ -49,13 +49,13 @@ int tnpheap_handler(int sig, siginfo_t *si)
 
 void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 {
-    fprintf(stderr, "Just entered tnpheap_alloc-%d\n",getpid());
+    //fprintf(stderr, "Just entered tnpheap_alloc-%d\n",getpid());
     if(npheap_alloc(npheap_dev,offset,size))
     { 
-    	fprintf(stderr, "Allocated npheap offset-%d\n",getpid());
+    	//fprintf(stderr, "Allocated npheap offset-%d\n",getpid());
     	struct tnpheap_cmd cmd;
     	cmd.offset = offset*getpagesize();
-    	fprintf(stderr, "Allocated command offset-%d\n",getpid());
+    	//fprintf(stderr, "Allocated command offset-%d\n",getpid());
     	//populate the transaction map on successful alloc
     	struct list_tnpheap_TM *new_node = malloc(sizeof(struct list_tnpheap_TM));
     	//initialise to negative values.
@@ -66,7 +66,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     	//new_node->local_buffer = NULL;
     	new_node->dirty_bit = 0;
     	new_node->next =NULL;
-    	fprintf(stderr, "Made a new node-%d\n",getpid());
+    	//fprintf(stderr, "Made a new node-%d\n",getpid());
     	//populate the list
     	//new_node->transaction_number = current_tx;
     	new_node->offset = offset;
@@ -74,14 +74,16 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     	new_node->size = size;
      	new_node->local_buffer = calloc(size,sizeof(char));
      	//new_node->local_buffer = NULL;
-     	fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
+     	//fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
     	struct list_tnpheap_TM *temp = head;
     	if(temp==NULL){
-    		temp = new_node;
+    		head = new_node;
+    		//fprintf(stderr, "head was null 81\n");
     	}
     	else{
     		while(temp->next != NULL){
     			temp=temp->next;
+    			//fprintf(stderr, "head was not null 86\n");
     		}
     		temp->next=new_node;
     	}
@@ -97,7 +99,7 @@ __u64 tnpheap_start_tx(int npheap_dev, int tnpheap_dev)
 	struct tnpheap_cmd cmd;
 	__u64 tx;
 	tx = ioctl(tnpheap_dev,TNPHEAP_IOCTL_START_TX,&cmd);
-	fprintf(stderr, "Started transaction%lu of -%d\n",tx,getpid());
+	//fprintf(stderr, "Started transaction%lu of -%d\n",tx,getpid());
     return tx;
 }
 
@@ -108,31 +110,34 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 	struct tnpheap_cmd cmd;
 	struct list_tnpheap_TM *temp = head;
 	if(temp == NULL){
-    fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
+    //fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
 		return 1;
 	}
-	fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
+	//fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
 	int flag=1;
         while(temp!=NULL)
         {	
-            	fprintf(stderr, "Inside the first while loop\n");
+      //      	fprintf(stderr, "Inside the first while loop %lu\n",current_tx);
             	cmd.version = temp->version_number;
-            	cmd.offset = temp->offset;
+            	cmd.offset = temp->offset*getpagesize();
             	cmd.data = temp->local_buffer;
             	cmd.size = temp->size;
-            	fprintf(stderr, "Start comparing verisons\n");
-            	if(!temp->local_buffer){
+        //    	fprintf(stderr, "Start comparing verisons%lu\n",current_tx);
+            	if(temp->local_buffer != 0){
+          //  		fprintf(stderr, "Set dirty bit for %lu in %lu\n",temp->offset,current_tx);
             		temp->dirty_bit = 1;
             	}
 
         	if(temp->version_number!=ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd))
         	{
         		flag=0;
+        		fprintf(stderr, "Some other version %lu\n",current_tx);
         	}
         	if(flag==0)
         	{
         		fprintf(stderr, "Conflict detected\n");
         		head==NULL;
+        		fprintf(stderr, "Transaction failure-%lu in -%d\n",current_tx,getpid());
         		return 1;
         	}
         	temp=temp->next;
@@ -142,7 +147,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         {	
 
             	cmd.version = temp->version_number;
-            	cmd.offset = temp->offset;
+            	cmd.offset = temp->offset*getpagesize();
             	cmd.data = temp->local_buffer;
             	cmd.size = temp->size;
 
@@ -156,6 +161,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     temp =temp->next;
     }
          head==NULL;
+         fprintf(stderr, "Transaction successful-%lu in -%d\n",current_tx,getpid());
          return 0;
       }
 
