@@ -94,9 +94,9 @@ int main(int argc, char *argv[])
                 exit(1);
             }
             memset(mapped_data, 0, data_array[i].size);
-            fprintf(stderr, "Intialize buffer to 0\n");
+            fprintf(stderr, "Intialize buffer to empty\n");
             memcpy(mapped_data, data_array[i].data, data_array[i].size);
-            fprintf(stderr, "Copy data to buffer\n");
+            //fprintf(stderr, "Copy data to buffer %s\n",mapped_data);
         }
     }
     COMMIT(npheap_dev, tnpheap_dev);
