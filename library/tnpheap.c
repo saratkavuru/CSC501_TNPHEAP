@@ -62,7 +62,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 {
     
     fprintf(stderr, "Just entered tnpheap_alloc-%d\n",getpid());
-    void *ta = npheap_alloc(npheap_dev,offset,size);
+    void *ta = npheap_alloc(npheap_dev,offset,8192);
     __u64 kernel_version = -1;
     if(ta == -1){
     	fprintf(stderr, "tnpheap_alloc returned -1 for %d\n",getpid());
@@ -124,12 +124,13 @@ __u64 tnpheap_start_tx(int npheap_dev, int tnpheap_dev)
 	__u64 tx;
 	tx = ioctl(tnpheap_dev,TNPHEAP_IOCTL_START_TX,&cmd);
 	fprintf(stderr, "Started transaction%lu of -%d\n",tx,getpid());
-    return tx;
+     return tx;
 }
 
 int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 {
 	__u64 kernel_version = -1;
+	void *ta;
 	fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
 	// Search this list_npheap_TM using transaction number as index
 	struct tnpheap_cmd cmd;
@@ -143,10 +144,10 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         while(temp!=NULL)
         {	
             	fprintf(stderr, "Inside the first while loop %lu\n",current_tx);
-            	cmd.version = temp->version_number;
+            	//cmd.version = temp->version_number;
             	cmd.offset = temp->offset*getpagesize();
             	//cmd.data = temp->local_buffer;
-            	cmd.size = temp->size;
+            	//cmd.size = temp->size;
             	fprintf(stderr, "Start comparing verisons%lu\n",current_tx);
             	if(temp->local_buffer != 0){
             		fprintf(stderr, "Set dirty bit for %lu in %lu\n",temp->offset,current_tx);
@@ -174,16 +175,18 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         {	
 
             	fprintf(stderr, "Please be here\n");
-            	cmd.version = temp->version_number;
+            	//cmd.version = temp->version_number;
             	cmd.offset = temp->offset*getpagesize();
             	fprintf(stderr, "Or here\n");
             	//cmd.data = temp->local_buffer;
-            	cmd.size = temp->size;
+            	//cmd.size = temp->size;
 
         	if(temp->dirty_bit){
         		fprintf(stderr, "Dear lord\n");
         		fprintf(stderr, "Temp size %lu vs Npheap size %ld \n",temp->size,npheap_getsize(npheap_dev,temp->offset));
-        	memcpy(npheap_alloc(npheap_dev,temp->offset,temp->size),temp->local_buffer,temp->size);
+        	ta = npheap_alloc(npheap_dev,temp->offset,8192);
+        	fprintf(stderr, "After - Temp size %lu vs Npheap size %ld \n",temp->size,npheap_getsize(npheap_dev,temp->offset));
+        	memcpy(ta,temp->local_buffer,temp->size);
         	fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
         	if(ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd)){            		            	
           fprintf(stderr, "Committed transaction-%lu and offset %lu with version number %lu in -%d\n",current_tx,temp->offset,temp->version_number,getpid());
