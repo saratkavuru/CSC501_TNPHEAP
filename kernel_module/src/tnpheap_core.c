@@ -44,6 +44,7 @@
 #include <linux/mutex.h>
 #include <linux/time.h>
 
+DEFINE_MUTEX(tnpheap_lock); 
 static __u64 transaction_number =0;
 struct list_tnpheap {
 
@@ -129,10 +130,15 @@ __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
         {
             printk(KERN_CONT "Inside commit-searching for version-kernel\n");
             // if found, update the version number.
+            
             if(temp->offset == (cmd.offset/PAGE_SIZE)){
+                if(temp->version_number == cmd.version){
+                mutex_lock(&tnpheap_lock);
                 temp->version_number = temp->version_number + 1;
                 printk(KERN_CONT "Updated version in commit-kernel\n");
+                mutex_unlock(&tnpheap_lock);
                 return 1;
+            }
             }
                  
              temp=temp->next;

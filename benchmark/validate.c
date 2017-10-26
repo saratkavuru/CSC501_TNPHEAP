@@ -77,6 +77,7 @@ int main(int argc, char *argv[])
     }
     if(error == 0)
         fprintf(stderr,"Pass\n");
+    fprintf(stderr,"Error Count %d\n",error);
     close(devfd);
     return 0;
 }

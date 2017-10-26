@@ -100,6 +100,7 @@ int main(int argc, char *argv[])
         }
     }
     COMMIT(npheap_dev, tnpheap_dev);
+    fprintf(stderr,"Commit successful for process %d\n",getpid());
 
     // print commit log into the tnpheap.pid.log(data from the npheap)
 
