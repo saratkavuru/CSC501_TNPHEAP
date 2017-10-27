@@ -25,7 +25,7 @@ struct list_tnpheap_TM {
 
 };
 struct list_tnpheap_TM *head=NULL;
-int node_count=0;
+static int node_count=0;
 __u64 tnpheap_get_version(int npheap_dev, int tnpheap_dev, __u64 offset)
 {
       // Search this list_npheap_TM using offset as index
@@ -52,6 +52,7 @@ void free_list(struct list_tnpheap_TM *head){
 		free(temp);
 		temp = next;
 	}
+	node_count =0;
 head = NULL;
 }
 
@@ -74,26 +75,32 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     else{ 
     	fprintf(stderr, "Allocated npheap offset %lu for %d\n",offset,getpid());
     	struct tnpheap_cmd cmd;
+ 	   	fprintf(stderr, "Problem with offset %lu for %d\n",offset,getpid());
     	cmd.offset = offset*getpagesize();
+    	fprintf(stderr, "Problem with cmd.offset %lu for %d\n",offset,getpid());
     	kernel_version=ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd);
+    	fprintf(stderr, "Problem with kernel_version %lu for %d\n",kernel_version,getpid());
     	if(kernel_version == -1){
     		fprintf(stderr, "kernel_version is -1 for %d\n",getpid());
     	}
-    
     	else{
     		temp = head;
     		while(temp!=NULL)
     		{
     			if(temp->offset==offset){
-    				temp->version_number == kernel_version;
+    				fprintf(stderr, "Problem with temp offset %lu for %d\n",offset,getpid());
+    				//temp->version_number == kernel_version;
     				return temp->local_buffer;
     			}
+    			fprintf(stderr, "Problem with temp next %lu for %d and node count %d\n",offset,getpid(),node_count);
     			temp=temp->next;
  
     		}
 
+    	fprintf(stderr, "Problem with new_node %lu for %d\n",offset,getpid());
     	//populate the transaction map on successful alloc
     	struct list_tnpheap_TM *new_node = malloc(sizeof(struct list_tnpheap_TM));
+    	fprintf(stderr, "Problem with malloc %lu for %d\n",offset,getpid());
     	//initialise to negative values.
     	new_node->version_number = -1;	
     	//new_node->transaction_number = -1;
@@ -109,8 +116,11 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     	//fprintf(stderr, "Is the problem here offset- %lu vs cmd.offset-%lu of process %d\n",new_node->offset,cmd.offset,getpid());
     	new_node->version_number = kernel_version;
     	new_node->size = size;
-    	//fprintf(stderr, "Or Is the problem here-%d\n",getpid());
+    	//fprintf(stderr, "Is the problem here-%d\n",getpid());
      	new_node->local_buffer = calloc(size,sizeof(char));
+     	fprintf(stderr, "Problem with calloc %lu for %d\n",offset,getpid());
+     	//printf(stderr, "Or Is the problem here-%d\n",getpid());
+     	memcpy(new_node->local_buffer,ta,new_node->size);
      	//new_node->local_buffer = NULL;
      	fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
     	temp = head;
@@ -127,7 +137,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     		temp->next=new_node;
     	}
 
-       fprintf(stderr, "Returning pointer of local_buffer for transaction-%lu in -%d\n",current_tx,getpid());
+        fprintf(stderr, "Returning pointer of local_buffer for transaction-%lu in -%d\n",current_tx,getpid());
     	return new_node->local_buffer;     
     }
     }

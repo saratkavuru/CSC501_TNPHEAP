@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
             }
 //            memset(mapped_data, 0, data_array[i].size);
 //            memcpy(mapped_data, data_array[i].data, data_array[i].size);
+             fprintf(stderr,"benchmark - Object %d with length %lu \n",i,strlen(data_array[i].data));
             fprintf(fp,"S\t%d\t%llu\t%d\t%lu\t%s\n",pid,msec_time,i,strlen(data_array[i].data),data_array[i].data);
         }
     }
