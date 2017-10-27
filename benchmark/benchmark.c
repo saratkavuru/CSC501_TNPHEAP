@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
         if(data_array[i].size)
         {
             size = data_array[i].size;
-            fprintf(stderr, "About to allocate in benchmark for Object %d\n",i);
+           // fprintf(stderr, "About to allocate in benchmark for Object %d\n",i);
             mapped_data = (char *)tnpheap_alloc(npheap_dev,tnpheap_dev,i,size);
             if(!mapped_data)
             {
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
                 exit(1);
             }
             memset(mapped_data, 0, data_array[i].size);
-            fprintf(stderr, "Intialize buffer to empty\n");
+            //fprintf(stderr, "Intialize buffer to empty\n");
             memcpy(mapped_data, data_array[i].data, data_array[i].size);
             //fprintf(stderr, "Copy data to buffer %s\n",mapped_data);
         }
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
             }
 //            memset(mapped_data, 0, data_array[i].size);
 //            memcpy(mapped_data, data_array[i].data, data_array[i].size);
-             fprintf(stderr,"benchmark - Object %d with length %lu \n",i,strlen(data_array[i].data));
+             //fprintf(stderr,"benchmark - Object %d with length %lu \n",i,strlen(data_array[i].data));
             fprintf(fp,"S\t%d\t%llu\t%d\t%lu\t%s\n",pid,msec_time,i,strlen(data_array[i].data),data_array[i].data);
         }
     }

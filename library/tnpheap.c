@@ -67,7 +67,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 {
 
     struct list_tnpheap_TM *temp = head;
-    fprintf(stderr, "Just entered tnpheap_alloc-%d\n",getpid());
+    //fprintf(stderr, "Just entered tnpheap_alloc-%d\n",getpid());
     void *ta = npheap_alloc(npheap_dev,offset,8192);
     __u64 kernel_version = -1;
     if(ta == -1){
@@ -87,22 +87,22 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 
     }*/
 
-    fprintf(stderr, "Allocated npheap offset %lu for %d\n",offset,getpid());
+    //fprintf(stderr, "Allocated npheap offset %lu for %d\n",offset,getpid());
     struct tnpheap_cmd cmd;
-    fprintf(stderr, "Problem with offset %lu for %d\n",offset,getpid());
+    //fprintf(stderr, "Problem with offset %lu for %d\n",offset,getpid());
     cmd.offset = offset*getpagesize();
-    fprintf(stderr, "Problem with cmd.offset %lu for %d\n",offset,getpid());
+    //fprintf(stderr, "Problem with cmd.offset %lu for %d\n",offset,getpid());
     kernel_version=ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd);
-    fprintf(stderr, "Problem with kernel_version %lu for %d\n",kernel_version,getpid());
+   // fprintf(stderr, "Problem with kernel_version %lu for %d\n",kernel_version,getpid());
     if(kernel_version == -1){
         fprintf(stderr, "kernel_version is -1 for %d\n",getpid());
         return -1;
     }
     
-    fprintf(stderr, "Problem with new_node %lu for %d\n",offset,getpid());
+    //fprintf(stderr, "Problem with new_node %lu for %d\n",offset,getpid());
         //populate the transaction map on successful alloc
     struct list_tnpheap_TM *new_node = malloc(sizeof(struct list_tnpheap_TM));
-    fprintf(stderr, "Problem with malloc %lu for %d\n",offset,getpid());
+    //fprintf(stderr, "Problem with malloc %lu for %d\n",offset,getpid());
         //initialise to negative values.
     new_node->version_number = -1;  
     new_node->offset = -1;
@@ -113,9 +113,9 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     new_node->version_number = kernel_version;
     new_node->size = size;
     new_node->local_buffer = calloc(size,sizeof(char));
-    fprintf(stderr, "Problem with calloc %lu for %d\n",offset,getpid());
+    //fprintf(stderr, "Problem with calloc %lu for %d\n",offset,getpid());
     memcpy(new_node->local_buffer,ta,new_node->size);
-    fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
+    //fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
 
     temp = head;
     if(temp==NULL){
@@ -131,7 +131,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
         temp->next=new_node;
         }
 
-        fprintf(stderr, "Returning pointer of local_buffer for transaction-%lu in -%d\n",current_tx,getpid());
+     //   fprintf(stderr, "Returning pointer of local_buffer for transaction-%lu in -%d\n",current_tx,getpid());
         return new_node->local_buffer;     
 }
     
@@ -152,38 +152,39 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     __u64 kernel_version = -1;
     int permission = 0;
     void *ta;
-    fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
+    int conflict = 0;
+    //fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
     // Search this list_npheap_TM using transaction number as index
     struct tnpheap_cmd cmd;
     struct list_tnpheap_TM *temp = head;
     if(temp == NULL){
-        fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
+        //fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
         return 1;
     }
     
-    //int flag=1;
     while(temp!=NULL)
     {   
-        fprintf(stderr, "Inside the first while loop  for offset %ld of transaction %lu and NodeCount %ld\n",temp->offset,current_tx,node_count);
+       // fprintf(stderr, "Inside the first while loop  for offset %ld of transaction %lu and NodeCount %ld\n",temp->offset,current_tx,node_count);
         cmd.version = temp->version_number;
         cmd.offset = temp->offset*getpagesize();
         //cmd.data = temp->local_buffer;
         //cmd.size = temp->size;
         //fprintf(stderr, "Start comparing verisons%lu\n",current_tx);
+       // fprintf(stderr, "Is the problem here?\n");
         ta = npheap_alloc(npheap_dev,temp->offset,8192);
+        //fprintf(stderr, "Or Is the problem here?\n");
         if(memcmp(ta,temp->local_buffer,temp->size) != 0){
-            fprintf(stderr, "Set dirty bit for %lu and version %lu in %lu\n",temp->offset,temp->version_number,current_tx);
+         //   fprintf(stderr, "Set dirty bit for %lu and version %lu in %lu\n",temp->offset,temp->version_number,current_tx);
             temp->dirty_bit = 1;
             permission=ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd);
             if(permission){                                 
-              fprintf(stderr, "Committed transaction-%lu and offset %lu with version number %lu in -%d\n",current_tx,temp->offset,temp->version_number,getpid());
+           //   fprintf(stderr, "Committed transaction-%lu and offset %lu with version number %lu in -%d\n",current_tx,temp->offset,temp->version_number,getpid());
               memcpy(ta,temp->local_buffer,temp->size);
-              fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
+            fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
               permission =0;
           }
           else{
-            free_list(head);
-            return 1;
+            conflict = 1;
         }
     }
 
@@ -191,8 +192,14 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 }
 
 free_list(head);
-fprintf(stderr, "Transaction successful-%lu in -%d\n",current_tx,getpid());
-return 0;
+if(conflict == 0){
+	fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
+    return 0;
+ }
+
+fprintf(stderr, "Transaction failed- %lu in -%d\n",current_tx,getpid());
+return 1;
+ 
 }    
 //fprintf(stderr, "Set all dirty bits in transaction %lu\n",current_tx);
         	//We have to abort even if read only offset versions are changed
