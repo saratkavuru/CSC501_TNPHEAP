@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
             memset(data,0,8192);
         } else if (op == 'G') {
             if (strcmp(obj[(int)object_id], data)) {   
-                fprintf(stderr, "%d: Key %d has a wrong value %s v.s. %s\n",tid,(int)object_id,data,obj[(int)object_id]);
+                fprintf(stderr, "First loop %d: Key %d has a wrong value %s v.s. %s\n",tid,(int)object_id,data,obj[(int)object_id]);
                 error++; 
             }
         }
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
         {
             if(strcmp(mapped_data,obj[i])!=0)
             {
-                fprintf(stderr, "Object %d (size %llu) has a wrong value %s v.s. %s\n",i,size,mapped_data,obj[i]);
+                fprintf(stderr, "Second-Object %d (size %llu) has a wrong value %s v.s. %s\n",i,size,mapped_data,obj[i]);
                 error++;
             }
         }
