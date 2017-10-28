@@ -173,7 +173,9 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         return 0;
     }
     
-    //npheap_lock(npheap_dev,10);
+    
+    npheap_lock(npheap_dev,10);
+    //ACquire lock to set permissions;
     while(temp!=NULL)
     {   
        // fprintf(stderr, "Inside the first while loop  for offset %ld of transaction %lu and NodeCount %ld\n",temp->offset,current_tx,node_count);
@@ -214,12 +216,13 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 if(conflict){
  fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
  conflict = 0;
+ npheap_unlock(npheap_dev,10);
  free_list(&head);
  return 1;	
 }
 
 temp=head;
-npheap_lock(npheap_dev,10);
+//npheap_lock(npheap_dev,10);
 while(temp!=NULL){
 	if(temp->permission){
 	cmd.version = temp->version_number;
