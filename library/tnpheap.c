@@ -43,19 +43,20 @@ __u64 tnpheap_get_version(int npheap_dev, int tnpheap_dev, __u64 offset)
 }
 
 
-void free_list(struct list_tnpheap_TM *head){
-	struct list_tnpheap_TM *temp = head;
+void free_list(struct list_tnpheap_TM **head){
+	struct list_tnpheap_TM *temp = *head;
 	struct list_tnpheap_TM *next;
 
 	while(temp!=NULL){
 		next = temp->next;
-		//free(temp->local_buffer);
+		free(temp->local_buffer);
 		free(temp);
-		node_count--;
+		//node_count--;
+		//fprintf(stderr, "NodeCount %d\n",node_count);
 		temp = next;
 	}
 	//node_count =0;
-head = NULL;
+*head = NULL;
 }
 
 int tnpheap_handler(int sig, siginfo_t *si)
@@ -69,7 +70,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 {
 
     struct list_tnpheap_TM *temp = head;
-   // fprintf(stderr, "-%d entered tnpheap_alloc with node_count %d\n",getpid()),node_count;
+    //fprintf(stderr, "-%d entered tnpheap_alloc with node_count %d\n",getpid(),node_count);
     void *ta = npheap_alloc(npheap_dev,offset,8192);
     __u64 kernel_version = -1;
     if(ta == -1){
@@ -146,6 +147,7 @@ __u64 tnpheap_start_tx(int npheap_dev, int tnpheap_dev)
 	__u64 tx;
 	tx = ioctl(tnpheap_dev,TNPHEAP_IOCTL_START_TX,&cmd);
 	fprintf(stderr, "Started transaction%lu of -%d\n",tx,getpid());
+	node_count = 0;
      return tx;
 }
 
@@ -164,7 +166,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         //fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
        fprintf(stderr, "Transaction successful(nc)- %lu in -%d\n",current_tx,getpid());
 
-        free_list(head);
+        free_list(&head);
         return 0;
     }
     
@@ -182,8 +184,9 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
        // fprintf(stderr, "Is the problem here?\n");
         ta = npheap_alloc(npheap_dev,temp->offset,8192);
         if(ta == -1){
+         free_list(&head);
          fprintf(stderr, "Transaction %ld aborted(np) in -%d because of pointer %p for offset %ld and node_count %d\n",current_tx,getpid(),ta,temp->offset,node_count);
-		 conflict = 1 ;
+		 return 1 ;
         }
         //fprintf(stderr, "Offset %ld and dirty_bit %d with tx %ld \n",temp->offset,temp->dirty_bit,current_tx);
         if(memcmp(ta,temp->local_buffer,temp->size) != 0){
@@ -208,7 +211,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 if(conflict){
  fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
  conflict = 0;
- free_list(head);
+ free_list(&head);
  return 1;	
 }
 
@@ -225,12 +228,12 @@ while(temp!=NULL){
    // npheap_unlock(npheap_dev,temp->offset);
 	temp->dirty_bit=0;
 	temp->permission =0;
-    //fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
+   // fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
     temp=temp->next;
 }
 }
 npheap_unlock(npheap_dev,10);
-free_list(head);
+free_list(&head);
 fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
 return 0;
  }

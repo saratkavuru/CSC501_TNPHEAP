@@ -25,8 +25,8 @@ int main(int argc, char *argv[])
         exit(1);
     }
     number_of_objects = atoi(argv[1]);
-    obj = (char **)malloc(number_of_objects*sizeof(char *));
-    for(i = 0; i < number_of_objects; i++)
+    obj = (char **)malloc(number_of_objects*2*sizeof(char *));
+    for(i = 0; i < number_of_objects*2; i++)
     {
         obj[i] = (char *)calloc(8192, sizeof(char));
     }
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
         {
             if(strcmp(mapped_data,obj[i])!=0)
             {
-               // fprintf(stderr, "Second-Object %d (size %llu) has a wrong value %s v.s. %s\n",i,size,mapped_data,obj[i]);
+                fprintf(stderr, "Object %d (size %llu) has a wrong value %s v.s. %s\n",i,size,mapped_data,obj[i]);
                 error++;
             }
         }
