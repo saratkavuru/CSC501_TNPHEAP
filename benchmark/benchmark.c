@@ -100,12 +100,13 @@ int main(int argc, char *argv[])
         }
     }
     COMMIT(npheap_dev, tnpheap_dev);
+    npheap_lock(npheap_dev,100);
     fprintf(stderr,"Commit successful for process %d\n",getpid());
 
     // print commit log into the tnpheap.pid.log(data from the npheap)
 
     gettimeofday(&current_time,NULL);
-    msec_time = current_time.tv_usec + current_time.tv_sec*10^6;
+    msec_time = current_time.tv_usec + current_time.tv_sec*1000000;
 
     // print commit log
     pid=(int)getpid();
@@ -128,7 +129,7 @@ int main(int argc, char *argv[])
             fprintf(fp,"S\t%d\t%llu\t%d\t%lu\t%s\n",pid,msec_time,i,strlen(data_array[i].data),data_array[i].data);
         }
     }
-
+    npheap_unlock(npheap_dev,100);
     close(npheap_dev);
     close(tnpheap_dev);
     fclose(fp);

@@ -167,7 +167,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     struct list_tnpheap_TM *temp = head;
     if(temp == NULL){
         //fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
-       fprintf(stderr, "Transaction successful(nc)- %lu in -%d\n",current_tx,getpid());
+       fprintf(stderr, "Transaction successful(no reads)- %lu in -%d\n",current_tx,getpid());
 
         free_list(&head);
         return 0;
@@ -239,7 +239,7 @@ while(temp!=NULL){
    // npheap_unlock(npheap_dev,temp->offset);
 	temp->dirty_bit=0;
 	temp->permission =0;
-   // fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
+    //fprintf(stderr, "Copied data to npheap at offset %lu of size %lu for transaction %lu in -%d\n",temp->offset,temp->size,current_tx,getpid());
     temp=temp->next;
 }
 }
