@@ -44,7 +44,9 @@
 #include <linux/mutex.h>
 #include <linux/time.h>
 
-DEFINE_MUTEX(tnpheap_lock); 
+DEFINE_MUTEX(commit_lock);
+DEFINE_MUTEX(transaction_lock);
+DEFINE_MUTEX(population_lock); 
 static __u64 transaction_number =0;
 struct list_tnpheap {
 
@@ -78,6 +80,7 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
         printk(KERN_CONT "Haven't found it , so create new\n");
         temp = trans_head;
         printk(KERN_CONT "Problem with temp?\n");
+        mutex_lock(&population_lock);
         struct list_tnpheap *new_node=kzalloc(sizeof(struct list_tnpheap),GFP_KERNEL);
         printk(KERN_CONT "Is this the problem %lu\n",cmd.offset/PAGE_SIZE);
         new_node->offset = (cmd.offset/PAGE_SIZE);
@@ -88,7 +91,7 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
             {
                 trans_head=new_node;
                 printk(KERN_CONT "kernel head was NULL\n");
-                return new_node->version_number;
+                //return new_node->version_number;
             }
 
         else
@@ -98,8 +101,12 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
                 temp=temp->next;
 
             temp->next=new_node;
-            return new_node->version_number;
+            //return new_node->version_number;
         } 
+        
+        mutex_unlock(&population_lock);
+        return new_node->version_number;
+        
     }    
     return -1;
 }
@@ -108,7 +115,10 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
 __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
 {
   //printk(KERN_CONT "Inside start_tx-kernel\n");
-    return ++transaction_number;
+    mutex_lock(&transaction_lock);
+    transaction_number = transaction_number + 1 ;
+    mutex_unlock(&transaction_lock);
+    return transaction_number;
 }
 
 __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
@@ -128,15 +138,15 @@ __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
 
         while(temp!=NULL)
         {
-            printk(KERN_CONT "Inside commit-searching for version-kernel\n");
             // if found, update the version number.
             
             if(temp->offset == (cmd.offset/PAGE_SIZE)){
+               printk(KERN_CONT "Kernel while offset %ld and kversion %ld and version %ld\n",temp->offset,temp->version_number,cmd.version);
                 if(temp->version_number == cmd.version){
-                mutex_lock(&tnpheap_lock);
+                mutex_lock(&commit_lock);
                 temp->version_number = temp->version_number + 1;
                 printk(KERN_CONT "Updated version in commit-kernel\n");
-                mutex_unlock(&tnpheap_lock);
+                mutex_unlock(&commit_lock);
                 return 1;
             }
             }

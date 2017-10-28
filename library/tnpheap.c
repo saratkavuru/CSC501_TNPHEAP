@@ -153,7 +153,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     int permission = 0;
     void *ta;
     int conflict = 0;
-    //fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
+    fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
     // Search this list_npheap_TM using transaction number as index
     struct tnpheap_cmd cmd;
     struct list_tnpheap_TM *temp = head;
@@ -162,9 +162,11 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         return 1;
     }
     
+    //npheap_lock(npheap_dev,10);
     while(temp!=NULL)
     {   
        // fprintf(stderr, "Inside the first while loop  for offset %ld of transaction %lu and NodeCount %ld\n",temp->offset,current_tx,node_count);
+        
         cmd.version = temp->version_number;
         cmd.offset = temp->offset*getpagesize();
         //cmd.data = temp->local_buffer;
@@ -172,16 +174,19 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         //fprintf(stderr, "Start comparing verisons%lu\n",current_tx);
        // fprintf(stderr, "Is the problem here?\n");
         ta = npheap_alloc(npheap_dev,temp->offset,8192);
-        //fprintf(stderr, "Or Is the problem here?\n");
+        //fprintf(stderr, "Offset %ld and dirty_bit %d with tx %ld \n",temp->offset,temp->dirty_bit,current_tx);
         if(memcmp(ta,temp->local_buffer,temp->size) != 0){
+        	temp->dirty_bit = 1 ;
+        }
+        if(temp->dirty_bit){
          //   fprintf(stderr, "Set dirty bit for %lu and version %lu in %lu\n",temp->offset,temp->version_number,current_tx);
-            temp->dirty_bit = 1;
             permission=ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd);
             if(permission){                                 
            //   fprintf(stderr, "Committed transaction-%lu and offset %lu with version number %lu in -%d\n",current_tx,temp->offset,temp->version_number,getpid());
-              memcpy(ta,temp->local_buffer,temp->size);
-            fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
-              permission =0;
+            memcpy(ta,temp->local_buffer,temp->size);
+        //    fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
+            temp->dirty_bit = 1; 
+            permission =0;
           }
           else{
             conflict = 1;
@@ -190,7 +195,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 
     temp=temp->next;
 }
-
+//npheap_unlock(npheap_dev,10);
 free_list(head);
 if(conflict == 0){
 	fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
