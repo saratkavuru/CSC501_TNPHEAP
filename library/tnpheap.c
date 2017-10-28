@@ -159,7 +159,10 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     struct list_tnpheap_TM *temp = head;
     if(temp == NULL){
         //fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
-        return 1;
+       fprintf(stderr, "Transaction successful(nc)- %lu in -%d\n",current_tx,getpid());
+
+        free_list(head);
+        return 0;
     }
     
     //npheap_lock(npheap_dev,10);
@@ -174,38 +177,56 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         //fprintf(stderr, "Start comparing verisons%lu\n",current_tx);
        // fprintf(stderr, "Is the problem here?\n");
         ta = npheap_alloc(npheap_dev,temp->offset,8192);
+        if(ta == -1){
+         fprintf(stderr, "Transaction %ld aborted(np) in -%d\n",current_tx,getpid());
+		 free_list(head);
+	     return 1;
+        }
         //fprintf(stderr, "Offset %ld and dirty_bit %d with tx %ld \n",temp->offset,temp->dirty_bit,current_tx);
         if(memcmp(ta,temp->local_buffer,temp->size) != 0){
         	temp->dirty_bit = 1 ;
         }
+        
         if(temp->dirty_bit){
          //   fprintf(stderr, "Set dirty bit for %lu and version %lu in %lu\n",temp->offset,temp->version_number,current_tx);
             permission=ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd);
-            if(permission){                                 
+         if(!permission){                                 
            //   fprintf(stderr, "Committed transaction-%lu and offset %lu with version number %lu in -%d\n",current_tx,temp->offset,temp->version_number,getpid());
-            memcpy(ta,temp->local_buffer,temp->size);
+           conflict = 1;
+           //memcpy(ta,temp->local_buffer,temp->size);
         //    fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
-            temp->dirty_bit = 1; 
-            permission =0;
           }
-          else{
-            conflict = 1;
-        }
     }
 
     temp=temp->next;
 }
 //npheap_unlock(npheap_dev,10);
+if(conflict){
+ fprintf(stderr, "Transaction failed(conflict)- %lu in -%d\n",current_tx,getpid());
+ conflict = 0;
+ free_list(head);
+ return 1;	
+}
+
+temp=head;
+while(temp!=NULL){
+	//cmd.version = temp->version_number;
+    //cmd.offset = temp->offset*getpagesize();
+    ta = npheap_alloc(npheap_dev,temp->offset,8192);
+    npheap_lock(npheap_dev,temp->offset);
+    memcpy(ta,temp->local_buffer,temp->size);
+    npheap_unlock(npheap_dev,temp->offset);
+    //fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
+    temp=temp->next;
+}
 free_list(head);
-if(conflict == 0){
-	fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
-    return 0;
+fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
+return 0;
  }
 
-fprintf(stderr, "Transaction failed- %lu in -%d\n",current_tx,getpid());
-return 1;
+
  
-}    
+
 //fprintf(stderr, "Set all dirty bits in transaction %lu\n",current_tx);
         	//We have to abort even if read only offset versions are changed
             	
