@@ -20,6 +20,7 @@ struct list_tnpheap_TM {
     __u64 offset;
     __u64 size;
     int dirty_bit;
+    int permission;
     void *local_buffer;
     struct list_tnpheap_TM *next;
 
@@ -50,9 +51,10 @@ void free_list(struct list_tnpheap_TM *head){
 		next = temp->next;
 		//free(temp->local_buffer);
 		free(temp);
+		node_count--;
 		temp = next;
 	}
-	node_count =0;
+	//node_count =0;
 head = NULL;
 }
 
@@ -67,7 +69,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
 {
 
     struct list_tnpheap_TM *temp = head;
-    //fprintf(stderr, "Just entered tnpheap_alloc-%d\n",getpid());
+   // fprintf(stderr, "-%d entered tnpheap_alloc with node_count %d\n",getpid()),node_count;
     void *ta = npheap_alloc(npheap_dev,offset,8192);
     __u64 kernel_version = -1;
     if(ta == -1){
@@ -108,6 +110,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     new_node->offset = -1;
     new_node->size = 0;
     new_node->dirty_bit = 0;
+    new_node->permission = 0;
     new_node->next =NULL;
     new_node->offset = offset;
     new_node->version_number = kernel_version;
@@ -150,10 +153,10 @@ __u64 tnpheap_start_tx(int npheap_dev, int tnpheap_dev)
 int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 {
     __u64 kernel_version = -1;
-    int permission = 0;
+    //int permission = 0;
     void *ta;
     int conflict = 0;
-    fprintf(stderr, "Just inside commit for transaction %lu\n",current_tx);
+    fprintf(stderr, "Just inside commit for transaction %lu with node_count %d\n",current_tx,node_count);
     // Search this list_npheap_TM using transaction number as index
     struct tnpheap_cmd cmd;
     struct list_tnpheap_TM *temp = head;
@@ -172,15 +175,15 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         
         cmd.version = temp->version_number;
         cmd.offset = temp->offset*getpagesize();
+        kernel_version=ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd);
         //cmd.data = temp->local_buffer;
         //cmd.size = temp->size;
         //fprintf(stderr, "Start comparing verisons%lu\n",current_tx);
        // fprintf(stderr, "Is the problem here?\n");
         ta = npheap_alloc(npheap_dev,temp->offset,8192);
         if(ta == -1){
-         fprintf(stderr, "Transaction %ld aborted(np) in -%d\n",current_tx,getpid());
-		 free_list(head);
-	     return 1;
+         fprintf(stderr, "Transaction %ld aborted(np) in -%d because of pointer %p for offset %ld and node_count %d\n",current_tx,getpid(),ta,temp->offset,node_count);
+		 conflict = 1 ;
         }
         //fprintf(stderr, "Offset %ld and dirty_bit %d with tx %ld \n",temp->offset,temp->dirty_bit,current_tx);
         if(memcmp(ta,temp->local_buffer,temp->size) != 0){
@@ -189,36 +192,44 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         
         if(temp->dirty_bit){
          //   fprintf(stderr, "Set dirty bit for %lu and version %lu in %lu\n",temp->offset,temp->version_number,current_tx);
-            permission=ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd);
-         if(!permission){                                 
+            
+         if(temp->version_number==kernel_version){                                 
            //   fprintf(stderr, "Committed transaction-%lu and offset %lu with version number %lu in -%d\n",current_tx,temp->offset,temp->version_number,getpid());
-           conflict = 1;
+           temp->permission = 1;
            //memcpy(ta,temp->local_buffer,temp->size);
         //    fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
-          }
+         }
+         else conflict =1;
     }
 
     temp=temp->next;
 }
 //npheap_unlock(npheap_dev,10);
 if(conflict){
- fprintf(stderr, "Transaction failed(conflict)- %lu in -%d\n",current_tx,getpid());
+ fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
  conflict = 0;
  free_list(head);
  return 1;	
 }
 
 temp=head;
+npheap_lock(npheap_dev,10);
 while(temp!=NULL){
-	//cmd.version = temp->version_number;
-    //cmd.offset = temp->offset*getpagesize();
+	if(temp->permission){
+	cmd.version = temp->version_number;
+    cmd.offset = temp->offset*getpagesize();
     ta = npheap_alloc(npheap_dev,temp->offset,8192);
-    npheap_lock(npheap_dev,temp->offset);
+    //npheap_lock(npheap_dev,temp->offset);
+    if(ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd))
     memcpy(ta,temp->local_buffer,temp->size);
-    npheap_unlock(npheap_dev,temp->offset);
+   // npheap_unlock(npheap_dev,temp->offset);
+	temp->dirty_bit=0;
+	temp->permission =0;
     //fprintf(stderr, "Copied data to npheap at offset %lu for transaction %lu in -%d\n",temp->offset,current_tx,getpid());
     temp=temp->next;
 }
+}
+npheap_unlock(npheap_dev,10);
 free_list(head);
 fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
 return 0;
