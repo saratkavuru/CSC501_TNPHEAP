@@ -21,6 +21,7 @@ struct list_tnpheap_TM {
     __u64 size;
     int dirty_bit;
     int permission;
+    void *initial_buffer;
     void *local_buffer;
     struct list_tnpheap_TM *next;
 
@@ -50,6 +51,7 @@ void free_list(struct list_tnpheap_TM **head){
 	while(temp!=NULL){
 		next = temp->next;
 		free(temp->local_buffer);
+		free(temp->initial_buffer);
 		free(temp);
 		//node_count--;
 		//fprintf(stderr, "NodeCount %d\n",node_count);
@@ -77,19 +79,18 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
         fprintf(stderr, "npheap_alloc returned -1 for %d\n",getpid());
         return -1;
     }
-    //temp = head;
-    /*while(temp!=NULL)
+    temp = head;
+    while(temp!=NULL)
     {
         if(temp->offset==offset){
             //fprintf(stderr, "Problem with temp offset %lu for %d\n",offset,getpid());
                     //temp->version_number == kernel_version;
             return temp->local_buffer;
         }
-        fprintf(stderr, "Problem with temp next %lu for %d and node count %d\n",offset,getpid(),node_count);
+        //fprintf(stderr, "Problem with temp next %lu for %d and node count %d\n",offset,getpid(),node_count);
         temp=temp->next;
 
-    }*/
-
+    }
     //fprintf(stderr, "Allocated npheap offset %lu for %d\n",offset,getpid());
     struct tnpheap_cmd cmd;
     //fprintf(stderr, "Problem with offset %lu for %d\n",offset,getpid());
@@ -117,8 +118,10 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     new_node->version_number = kernel_version;
     new_node->size = size;
     new_node->local_buffer = calloc(size,sizeof(char));
+    new_node->initial_buffer = calloc(size,sizeof(char));
     //fprintf(stderr, "Problem with calloc %lu for %d\n",offset,getpid());
     memcpy(new_node->local_buffer,ta,new_node->size);
+    memcpy(new_node->initial_buffer,new_node->local_buffer,new_node->size);
     //fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
 
     temp = head;
@@ -182,14 +185,14 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
         //cmd.size = temp->size;
         //fprintf(stderr, "Start comparing verisons%lu\n",current_tx);
        // fprintf(stderr, "Is the problem here?\n");
-        ta = npheap_alloc(npheap_dev,temp->offset,8192);
+        /*ta = npheap_alloc(npheap_dev,temp->offset,8192);
         if(ta == -1){
          free_list(&head);
          fprintf(stderr, "Transaction %ld aborted(np) in -%d because of pointer %p for offset %ld and node_count %d\n",current_tx,getpid(),ta,temp->offset,node_count);
 		 return 1 ;
-        }
+        }*/
         //fprintf(stderr, "Offset %ld and dirty_bit %d with tx %ld \n",temp->offset,temp->dirty_bit,current_tx);
-        if(memcmp(ta,temp->local_buffer,temp->size) != 0){
+        if(memcmp(temp->initial_buffer,temp->local_buffer,temp->size) != 0){
         	temp->dirty_bit = 1 ;
         }
         
@@ -223,8 +226,13 @@ while(temp!=NULL){
     cmd.offset = temp->offset*getpagesize();
     ta = npheap_alloc(npheap_dev,temp->offset,8192);
     //npheap_lock(npheap_dev,temp->offset);
-    if(ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd))
+    if(ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd)){
+ 	memset(ta,0,8192);
     memcpy(ta,temp->local_buffer,temp->size);
+  }
+  	else {
+  		fprintf(stderr, "Failed in lock for offset %ld\n",temp->offset);
+  	}
    // npheap_unlock(npheap_dev,temp->offset);
 	temp->dirty_bit=0;
 	temp->permission =0;
