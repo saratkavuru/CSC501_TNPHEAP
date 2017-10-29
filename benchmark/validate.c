@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
         {
             if(strcmp(mapped_data,obj[i])!=0)
             {
-                fprintf(stderr, "Object %d (size %llu) has a wrong value %s v.s. (size %llu) %s\n",i,strlen(mapped_data),mapped_data,strlen(obj[i]),obj[i]);
+                fprintf(stderr, "Object %d (size %llu) has a wrong value %.10s v.s. (size %llu) %.10s\n",i,strlen(mapped_data),mapped_data,strlen(obj[i]),obj[i]);
                 error++;
             }
         }

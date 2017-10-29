@@ -160,6 +160,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     __u64 kernel_version = -1;
     //int permission = 0;
     void *ta;
+    void *ma;
     int conflict = 0;
     fprintf(stderr, "Just inside commit for transaction %lu with node_count %d\n",current_tx,node_count);
     // Search this list_npheap_TM using transaction number as index
@@ -230,16 +231,18 @@ while(temp!=NULL){
     ta = npheap_alloc(npheap_dev,temp->offset,8192);
     //npheap_lock(npheap_dev,temp->offset);
     if(ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd)){
- 	memset(ta,0,8192);
+ 	//memset(ta,0,8192);
+    fprintf(stderr, "Expectation -Copied %.10s to %.10s in offset %lu and size %ld for tx %ld\n",(char *)temp->local_buffer,(char *)ta,temp->offset,temp->size,current_tx);
     memcpy(ta,temp->local_buffer,temp->size);
+    fprintf(stderr, "Reality-Copied %.10s to %.10s in offset %lu\n",(char *)temp->local_buffer,(char *)ta,temp->offset);
+    //fprintf(stderr, "Copied data to npheap at offset %lu of size %lu for transaction %lu in -%d\n",temp->offset,temp->size,current_tx,getpid());
   }
   	else {
-  		fprintf(stderr, "Failed in lock for offset %ld\n",temp->offset);
+  		fprintf(stderr, "Failed in lock for offset %ld for transaction %ld\n",temp->offset,current_tx);
   	}
    // npheap_unlock(npheap_dev,temp->offset);
 	temp->dirty_bit=0;
 	temp->permission =0;
-    //fprintf(stderr, "Copied data to npheap at offset %lu of size %lu for transaction %lu in -%d\n",temp->offset,temp->size,current_tx,getpid());
     temp=temp->next;
 }
 }
