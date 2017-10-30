@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     tnpheap_init();
     npheap_dev = open("/dev/npheap",O_RDWR);
     tnpheap_dev = open("/dev/tnpheap",O_RDWR);
-    fprintf(stderr, "Both devices opened\n");
+    //fprintf(stderr, "Both devices opened\n");
     if(tnpheap_dev < 0 || npheap_dev < 0)
     {
         fprintf(stderr, "Device open failed");

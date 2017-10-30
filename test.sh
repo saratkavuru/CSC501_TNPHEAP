@@ -1,4 +1,5 @@
 # change this to where your npheap is.
+# sudo insmod ../../p1/CSC501_NPHeap/kernel_module/npheap.ko
 sudo insmod NPHeap/npheap.ko
 sudo chmod 777 /dev/npheap
 sudo insmod kernel_module/tnpheap.ko

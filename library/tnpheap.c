@@ -76,7 +76,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     void *ta = npheap_alloc(npheap_dev,offset,8192);
     __u64 kernel_version = -1;
     if(ta == -1){
-        fprintf(stderr, "npheap_alloc returned -1 for %d\n",getpid());
+        fprintf(stderr, "npheap_alloc returned -1 for tx %ld\n",current_tx);
         return -1;
     }
     temp = head;
@@ -117,11 +117,11 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     new_node->offset = offset;
     new_node->version_number = kernel_version;
     new_node->size = size;
-    new_node->local_buffer = calloc(size,sizeof(char));
-    new_node->initial_buffer = calloc(size,sizeof(char));
+    new_node->local_buffer = calloc(8192,sizeof(char));
+    new_node->initial_buffer = calloc(8192,sizeof(char));
     //fprintf(stderr, "Problem with calloc %lu for %d\n",offset,getpid());
-    memcpy(new_node->local_buffer,ta,new_node->size);
-    memcpy(new_node->initial_buffer,new_node->local_buffer,new_node->size);
+    memcpy(new_node->local_buffer,ta,8192);
+    memcpy(new_node->initial_buffer,new_node->local_buffer,8192);
     //fprintf(stderr, "Populated the new node-%d with transaction_number %lu\n",getpid(),current_tx);
 
     temp = head;
@@ -149,7 +149,9 @@ __u64 tnpheap_start_tx(int npheap_dev, int tnpheap_dev)
 	struct tnpheap_cmd cmd;
 	__u64 tx;
 	tx = ioctl(tnpheap_dev,TNPHEAP_IOCTL_START_TX,&cmd);
-	fprintf(stderr, "Started transaction%lu of -%d\n",tx,getpid());
+    //npheap_lock(npheap_dev,10);
+    //fprintf(stderr, "Lock aquired by tx %ld\n",tx);
+    fprintf(stderr, "Started transaction %lu of -%d\n",tx,getpid());
 	node_count = 0;
      return tx;
 }
@@ -176,6 +178,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     
     
     npheap_lock(npheap_dev,10);
+    //fprintf(stderr, "Lock aquired by tx %ld\n",current_tx);
     //ACquire lock to set permissions;
     while(temp!=NULL)
     {   
@@ -195,7 +198,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 		 return 1 ;
         }*/
         //fprintf(stderr, "Offset %ld and dirty_bit %d with tx %ld \n",temp->offset,temp->dirty_bit,current_tx);
-        if(memcmp(temp->initial_buffer,temp->local_buffer,temp->size) != 0){
+        if(memcmp(temp->initial_buffer,temp->local_buffer,8192) != 0){
         	temp->dirty_bit = 1 ;
         }
         
@@ -215,8 +218,9 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 }
 //npheap_unlock(npheap_dev,10);
 if(conflict){
- fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
+ //fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
  conflict = 0;
+ fprintf(stderr, "Lock released by tx %ld\n",current_tx);
  npheap_unlock(npheap_dev,10);
  free_list(&head);
  return 1;	
@@ -228,13 +232,25 @@ while(temp!=NULL){
 	if(temp->permission){
 	cmd.version = temp->version_number;
     cmd.offset = temp->offset*getpagesize();
-    ta = npheap_alloc(npheap_dev,temp->offset,8192);
-    //npheap_lock(npheap_dev,temp->offset);
+    //ta = npheap_alloc(npheap_dev,temp->offset,8192);
+    
+     //if(ta == -1){
+       // fprintf(stderr, "npheap_alloc returned -1 for offset %ld in tx %ld\n",temp->offset,current_tx);
+    //}//npheap_lock(npheap_dev,temp->offset);
     if(ioctl(tnpheap_dev,TNPHEAP_IOCTL_COMMIT,&cmd)){
  	//memset(ta,0,8192);
-    fprintf(stderr, "Expectation -Copied %.10s to %.10s in offset %lu and size %ld for tx %ld\n",(char *)temp->local_buffer,(char *)ta,temp->offset,temp->size,current_tx);
-    memcpy(ta,temp->local_buffer,temp->size);
-    fprintf(stderr, "Reality-Copied %.10s to %.10s in offset %lu\n",(char *)temp->local_buffer,(char *)ta,temp->offset);
+    //fprintf(stderr, "Expectation -Copied %.10s to %.10s in offset %lu and size %ld for tx %ld\n",(char *)temp->local_buffer,(char *)ta,temp->offset,temp->size,current_tx);
+    ta = npheap_alloc(npheap_dev,temp->offset,8192);
+    ma = npheap_alloc(npheap_dev,temp->offset,8192);
+    if(ta == -1){
+        fprintf(stderr, "npheap_alloc returned -1 for offset %ld in tx %ld\n",temp->offset,current_tx);
+    }
+    //fprintf(stderr, "Expectation -Copied %.10s to %.10s in offset %lu and size %ld for tx %ld\n",(char *)temp->local_buffer,(char *)ta,temp->offset,temp->size,current_tx);
+    memcpy(ta,temp->local_buffer,8192);
+   // fprintf(stderr, "Reality-Copied %.10s to %.10s in offset %lu\n",(char *)ma,(char *)ta,temp->offset);
+   if(memcmp(ta,ma,8192)!=0){
+    fprintf(stderr, "Memcpy failure for offset %ld in tx %ld\n",temp->offset,current_tx );
+   }
     //fprintf(stderr, "Copied data to npheap at offset %lu of size %lu for transaction %lu in -%d\n",temp->offset,temp->size,current_tx,getpid());
   }
   	else {
@@ -246,9 +262,11 @@ while(temp!=NULL){
     temp=temp->next;
 }
 }
-npheap_unlock(npheap_dev,10);
+
 free_list(&head);
 fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
+//fprintf(stderr, "Lock released by tx %ld\n",current_tx);
+npheap_unlock(npheap_dev,10);
 return 0;
  }
 
