@@ -163,6 +163,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     //int permission = 0;
     void *ta;
     void *ma;
+    //void *ra;
     int conflict = 0;
     fprintf(stderr, "Just inside commit for transaction %lu with node_count %d\n",current_tx,node_count);
     // Search this list_npheap_TM using transaction number as index
@@ -218,9 +219,9 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 }
 //npheap_unlock(npheap_dev,10);
 if(conflict){
- //fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
+ fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
  conflict = 0;
- fprintf(stderr, "Lock released by tx %ld\n",current_tx);
+ //fprintf(stderr, "Lock released by tx %ld\n",current_tx);
  npheap_unlock(npheap_dev,10);
  free_list(&head);
  return 1;	
@@ -242,15 +243,18 @@ while(temp!=NULL){
     //fprintf(stderr, "Expectation -Copied %.10s to %.10s in offset %lu and size %ld for tx %ld\n",(char *)temp->local_buffer,(char *)ta,temp->offset,temp->size,current_tx);
     ta = npheap_alloc(npheap_dev,temp->offset,8192);
     ma = npheap_alloc(npheap_dev,temp->offset,8192);
+    //ra = npheap_alloc(npheap_dev,temp->offset,8192);
     if(ta == -1){
         fprintf(stderr, "npheap_alloc returned -1 for offset %ld in tx %ld\n",temp->offset,current_tx);
     }
     //fprintf(stderr, "Expectation -Copied %.10s to %.10s in offset %lu and size %ld for tx %ld\n",(char *)temp->local_buffer,(char *)ta,temp->offset,temp->size,current_tx);
     memcpy(ta,temp->local_buffer,8192);
+    memcpy(ma,temp->local_buffer,8192);
    // fprintf(stderr, "Reality-Copied %.10s to %.10s in offset %lu\n",(char *)ma,(char *)ta,temp->offset);
-   if(memcmp(ta,ma,8192)!=0){
-    fprintf(stderr, "Memcpy failure for offset %ld in tx %ld\n",temp->offset,current_tx );
-   }
+   //printf("%p %p %p %d  %ld \n", ta, ma,ra, temp->offset,current_tx);
+    if((memcmp(ta,ma,8192))!=0){
+    fprintf(stderr, "Memcpy failure for offset %ld and size %ld in tx %ld\n",temp->offset,temp->size,current_tx );
+    }
     //fprintf(stderr, "Copied data to npheap at offset %lu of size %lu for transaction %lu in -%d\n",temp->offset,temp->size,current_tx,getpid());
   }
   	else {
