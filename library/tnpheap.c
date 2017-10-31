@@ -1,3 +1,5 @@
+//Project 2: Sarat Kavuru, skavuru; Rachit Thirani, rthiran;
+
 #include <npheap/tnpheap_ioctl.h>
 #include <npheap/npheap.h>
 #include <npheap.h>
@@ -76,7 +78,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     void *ta = npheap_alloc(npheap_dev,offset,8192);
     __u64 kernel_version = -1;
     if(ta == -1){
-        fprintf(stderr, "npheap_alloc returned -1 for tx %ld\n",current_tx);
+        //fprintf(stderr, "npheap_alloc returned -1 for tx %ld\n",current_tx);
         return -1;
     }
     temp = head;
@@ -99,7 +101,7 @@ void *tnpheap_alloc(int npheap_dev, int tnpheap_dev, __u64 offset, __u64 size)
     kernel_version=ioctl(tnpheap_dev,TNPHEAP_IOCTL_GET_VERSION,&cmd);
    // fprintf(stderr, "Problem with kernel_version %lu for %d\n",kernel_version,getpid());
     if(kernel_version == -1){
-        fprintf(stderr, "kernel_version is -1 for %d\n",getpid());
+        //fprintf(stderr, "kernel_version is -1 for %d\n",getpid());
         return -1;
     }
     
@@ -151,7 +153,7 @@ __u64 tnpheap_start_tx(int npheap_dev, int tnpheap_dev)
 	tx = ioctl(tnpheap_dev,TNPHEAP_IOCTL_START_TX,&cmd);
     //npheap_lock(npheap_dev,10);
     //fprintf(stderr, "Lock aquired by tx %ld\n",tx);
-    fprintf(stderr, "Started transaction %lu of -%d\n",tx,getpid());
+    //fprintf(stderr, "Started transaction %lu of -%d\n",tx,getpid());
 	node_count = 0;
      return tx;
 }
@@ -165,13 +167,13 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
     void *ma;
     //void *ra;
     int conflict = 0;
-    fprintf(stderr, "Just inside commit for transaction %lu with node_count %d\n",current_tx,node_count);
+    //fprintf(stderr, "Just inside commit for transaction %lu with node_count %d\n",current_tx,node_count);
     // Search this list_npheap_TM using transaction number as index
     struct tnpheap_cmd cmd;
     struct list_tnpheap_TM *temp = head;
     if(temp == NULL){
         //fprintf(stderr, "HEAD == NULL for transaction %lu\n",current_tx);
-       fprintf(stderr, "Transaction successful(no reads)- %lu in -%d\n",current_tx,getpid());
+      // fprintf(stderr, "Transaction successful(no reads)- %lu in -%d\n",current_tx,getpid());
 
         free_list(&head);
         return 0;
@@ -219,7 +221,7 @@ int tnpheap_commit(int npheap_dev, int tnpheap_dev)
 }
 //npheap_unlock(npheap_dev,10);
 if(conflict){
- fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
+// fprintf(stderr, "Transaction failed(conflict)- %lu in -%d with node_count %d\n",current_tx,getpid(),node_count);
  conflict = 0;
  //fprintf(stderr, "Lock released by tx %ld\n",current_tx);
  npheap_unlock(npheap_dev,10);
@@ -245,7 +247,7 @@ while(temp!=NULL){
     ma = npheap_alloc(npheap_dev,temp->offset,8192);
     //ra = npheap_alloc(npheap_dev,temp->offset,8192);
     if(ta == -1){
-        fprintf(stderr, "npheap_alloc returned -1 for offset %ld in tx %ld\n",temp->offset,current_tx);
+        //fprintf(stderr, "npheap_alloc returned -1 for offset %ld in tx %ld\n",temp->offset,current_tx);
     }
     //fprintf(stderr, "Expectation -Copied %.10s to %.10s in offset %lu and size %ld for tx %ld\n",(char *)temp->local_buffer,(char *)ta,temp->offset,temp->size,current_tx);
     memcpy(ta,temp->local_buffer,8192);
@@ -253,12 +255,12 @@ while(temp!=NULL){
    // fprintf(stderr, "Reality-Copied %.10s to %.10s in offset %lu\n",(char *)ma,(char *)ta,temp->offset);
    //printf("%p %p %p %d  %ld \n", ta, ma,ra, temp->offset,current_tx);
     if((memcmp(ta,ma,8192))!=0){
-    fprintf(stderr, "Memcpy failure for offset %ld and size %ld in tx %ld\n",temp->offset,temp->size,current_tx );
+   // fprintf(stderr, "Memcpy failure for offset %ld and size %ld in tx %ld\n",temp->offset,temp->size,current_tx );
     }
     //fprintf(stderr, "Copied data to npheap at offset %lu of size %lu for transaction %lu in -%d\n",temp->offset,temp->size,current_tx,getpid());
   }
   	else {
-  		fprintf(stderr, "Failed in lock for offset %ld for transaction %ld\n",temp->offset,current_tx);
+  		//fprintf(stderr, "Failed in lock for offset %ld for transaction %ld\n",temp->offset,current_tx);
   	}
    // npheap_unlock(npheap_dev,temp->offset);
 	temp->dirty_bit=0;
@@ -268,7 +270,7 @@ while(temp!=NULL){
 }
 
 free_list(&head);
-fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
+//fprintf(stderr, "Transaction successful- %lu in -%d\n",current_tx,getpid());
 //fprintf(stderr, "Lock released by tx %ld\n",current_tx);
 npheap_unlock(npheap_dev,10);
 return 0;

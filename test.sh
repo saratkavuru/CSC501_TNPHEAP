@@ -11,3 +11,5 @@ sort -n -k 3 trace > sorted_trace
 rm -f *.log
 sudo rmmod tnpheap
 sudo rmmod npheap
+rm trace
+rm sorted_trace

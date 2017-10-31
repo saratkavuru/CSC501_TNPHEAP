@@ -1,3 +1,4 @@
+//Project 2: Sarat Kavuru, skavuru; Rachit Thirani, rthiran;
 //////////////////////////////////////////////////////////////////////
 //                             North Carolina State University
 //
@@ -114,7 +115,7 @@ __u64 tnpheap_get_version(struct tnpheap_cmd __user *user_cmd)
 
 __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
 {
-  printk(KERN_CONT "Inside start_tx-kernel\n");
+  //printk(KERN_CONT "Inside start_tx-kernel\n");
     mutex_lock(&transaction_lock);
     transaction_number = transaction_number + 1 ;
     mutex_unlock(&transaction_lock);
@@ -124,7 +125,7 @@ __u64 tnpheap_start_tx(struct tnpheap_cmd __user *user_cmd)
 __u64 tnpheap_commit(struct tnpheap_cmd __user *user_cmd)
 {
     
-    printk(KERN_CONT "Inside commit-kernel\n");
+   // printk(KERN_CONT "Inside commit-kernel\n");
     struct tnpheap_cmd cmd;
     __u64 ret=0;
     if (!copy_from_user(&cmd, user_cmd, sizeof(cmd)))
